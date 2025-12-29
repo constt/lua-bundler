@@ -21,8 +21,11 @@ func (b *Bundler) generateBundle(mainContent string) string {
 		output.WriteString(fmt.Sprintf("-- Module: %s\n", path))
 		output.WriteString(fmt.Sprintf("EmbeddedModules[\"%s\"] = function()\n", escapeString(path)))
 
+		// Process module content to replace nested requires with loadModule calls
+		processedContent := b.replaceModuleCalls(content)
+
 		// Indent content
-		lines := strings.Split(content, "\n")
+		lines := strings.Split(processedContent, "\n")
 		for _, line := range lines {
 			if strings.TrimSpace(line) != "" {
 				output.WriteString("    " + line + "\n")

@@ -212,3 +212,42 @@ return test`
 		}
 	}
 }
+
+func TestGenerateBundle_NestedRequires(t *testing.T) {
+	b, err := NewBundler("test.lua", false, false)
+	require.NoError(t, err, "NewBundler should not fail")
+
+	// Add a module that requires another module (nested require)
+	b.modules["modules.config"] = `local config = {}
+local locations = require("modules.locations")
+local fishing_methods = require("modules.fishing_methods")
+
+config.locations = locations
+config.methods = fishing_methods
+
+return config`
+
+	b.modules["modules.locations"] = `local locations = {}
+locations.spots = {"spot1", "spot2"}
+return locations`
+
+	b.modules["modules.fishing_methods"] = `local methods = {}
+methods.types = {"rod", "net"}
+return methods`
+
+	mainContent := `local config = require("modules.config")
+print(config.locations.spots[1])`
+
+	result := b.generateBundle(mainContent)
+
+	// Verify that nested requires in modules.config are replaced with loadModule
+	assert.Contains(t, result, `loadModule("modules.locations")`, "should replace nested require in module with loadModule")
+	assert.Contains(t, result, `loadModule("modules.fishing_methods")`, "should replace nested require in module with loadModule")
+	assert.NotContains(t, result, `require("modules.locations")`, "should not contain original require call in module")
+	assert.NotContains(t, result, `require("modules.fishing_methods")`, "should not contain original require call in module")
+	
+	// Verify the module content is properly embedded
+	assert.Contains(t, result, `EmbeddedModules["modules.config"]`, "should contain config module")
+	assert.Contains(t, result, `EmbeddedModules["modules.locations"]`, "should contain locations module")
+	assert.Contains(t, result, `EmbeddedModules["modules.fishing_methods"]`, "should contain fishing_methods module")
+}

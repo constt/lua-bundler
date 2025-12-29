@@ -61,6 +61,21 @@ func TestIsLocalModule(t *testing.T) {
 			modulePath: "ReplicatedStorage",
 			want:       true, // Current implementation treats this as local
 		},
+		{
+			name:       "dot-separated absolute path",
+			modulePath: "modules.tasks.wait_until_idle",
+			want:       true,
+		},
+		{
+			name:       "dot-separated path with multiple levels",
+			modulePath: "tasks.cook",
+			want:       true,
+		},
+		{
+			name:       "dot-separated path modules.tasks",
+			modulePath: "modules.tasks.cook",
+			want:       true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -123,6 +138,24 @@ func TestResolveModulePath(t *testing.T) {
 			currentFile: "/base/main.lua",
 			modulePath:  `"helper"`,
 			want:        "/base/helper.lua",
+		},
+		{
+			name:        "dot-separated absolute path",
+			currentFile: "/base/main.lua",
+			modulePath:  "modules.tasks.wait_until_idle",
+			want:        "/base/modules/tasks/wait_until_idle.lua",
+		},
+		{
+			name:        "dot-separated path tasks.cook",
+			currentFile: "/base/tasks/main.lua",
+			modulePath:  "tasks.cook",
+			want:        "/base/tasks/cook.lua",
+		},
+		{
+			name:        "quoted dot-separated path",
+			currentFile: "/base/main.lua",
+			modulePath:  `"modules.tasks.cook"`,
+			want:        "/base/modules/tasks/cook.lua",
 		},
 	}
 
