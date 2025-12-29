@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/alfin-efendy/lua-bundler/internal/bundler"
-	httpserver "github.com/alfin-efendy/lua-bundler/internal/http"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/constt/lua-bundler/internal/bundler"
+	httpserver "github.com/constt/lua-bundler/internal/http"
 	"github.com/spf13/cobra"
 )
 

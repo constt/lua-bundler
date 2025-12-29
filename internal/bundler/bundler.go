@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/alfin-efendy/lua-bundler/internal/cache"
-	"github.com/alfin-efendy/lua-bundler/internal/obfuscator"
+	"github.com/constt/lua-bundler/internal/cache"
+	"github.com/constt/lua-bundler/internal/obfuscator"
 )
 
 type Bundler struct {

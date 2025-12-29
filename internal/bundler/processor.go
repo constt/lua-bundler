@@ -63,21 +63,50 @@ func (b *Bundler) isLocalModule(modulePath string) bool {
 	// 2. Dimulai dengan "/" (absolut dari base)
 	// 3. Berisi "/" (subdirectory)
 	// 4. Berakhir dengan ".lua"
-	// 5. Tidak berisi karakter yang mengindikasikan external module
+	// 5. Dot-separated path (e.g., tasks.cook) - absolute from base
+	// 6. Tidak berisi karakter yang mengindikasikan external module
+
+	// Check for external module indicators
+	if strings.Contains(modulePath, "::") {
+		return false
+	}
+
+	// Check for common external module prefixes (Roblox API, etc.)
+	externalPrefixes := []string{"game", "workspace", "ReplicatedStorage", "ServerStorage", "StarterGui", "StarterPack", "StarterPlayer", "Lighting", "SoundService", "TweenService", "HttpService", "RunService", "UserInputService", "Players", "Teams", "Debris", "CollectionService"}
+	firstPart := strings.Split(modulePath, ".")[0]
+	for _, prefix := range externalPrefixes {
+		if firstPart == prefix {
+			return false
+		}
+	}
+
 	return strings.HasPrefix(modulePath, ".") ||
 		strings.HasPrefix(modulePath, "/") ||
 		strings.Contains(modulePath, "/") ||
 		strings.HasSuffix(modulePath, ".lua") ||
-		(!strings.Contains(modulePath, ".") && !strings.Contains(modulePath, "::"))
+		// Dot-separated paths like tasks.cook are absolute from base
+		(strings.Contains(modulePath, ".") && !strings.Contains(modulePath, "/")) ||
+		(!strings.Contains(modulePath, "."))
 }
 
 // resolveModulePath resolves relative module paths to absolute paths
 func (b *Bundler) resolveModulePath(currentFile, modulePath string) string {
 	modulePath = strings.Trim(modulePath, "'\"")
 
-	// Handle absolute paths from base directory
+	// Handle absolute paths from base directory (starting with /)
 	if strings.HasPrefix(modulePath, "/") {
 		resolvedPath := filepath.Join(b.baseDir, strings.TrimPrefix(modulePath, "/"))
+		if !strings.HasSuffix(resolvedPath, ".lua") {
+			resolvedPath += ".lua"
+		}
+		return resolvedPath
+	}
+
+	// Handle dot-separated absolute paths (e.g., tasks.cook -> tasks/cook.lua from base)
+	if strings.Contains(modulePath, ".") && !strings.Contains(modulePath, "/") && !strings.Contains(modulePath, "::") {
+		// Convert dots to slashes: tasks.cook -> tasks/cook
+		pathWithSlashes := strings.ReplaceAll(modulePath, ".", "/")
+		resolvedPath := filepath.Join(b.baseDir, pathWithSlashes)
 		if !strings.HasSuffix(resolvedPath, ".lua") {
 			resolvedPath += ".lua"
 		}
@@ -102,7 +131,8 @@ func (b *Bundler) resolveModulePath(currentFile, modulePath string) string {
 // processFile recursively processes a file and its dependencies
 func (b *Bundler) processFile(filePath string, content string) error {
 	// Regex patterns
-	requireRegex := regexp.MustCompile(`require\s*\(\s*['"]([^'"]+)['"]\s*\)`)
+	// Support both quoted strings: require("path.to.file") and unquoted: require(path.to.file)
+	requireRegex := regexp.MustCompile(`require\s*\(\s*(?:['"]([^'"]+)['"]|([a-zA-Z_][a-zA-Z0-9_.]*))\s*\)`)
 	httpGetRegex := regexp.MustCompile(`loadstring\s*\(\s*game:HttpGet\s*\(\s*['"]([^'"]+)['"]\s*\)\s*\)\s*\(\s*\)`)
 	// Pattern to detect HttpGet inside function calls (should NOT be bundled)
 	funcCallHttpGetRegex := regexp.MustCompile(`\w+\s*\([^)]*loadstring\s*\(\s*game:HttpGet`)
@@ -142,10 +172,14 @@ func (b *Bundler) processFile(filePath string, content string) error {
 
 		// Check for local require()
 		if matches := requireRegex.FindStringSubmatch(line); len(matches) > 1 {
+			// matches[1] is quoted string, matches[2] is unquoted identifier
 			modulePath := matches[1]
+			if modulePath == "" && len(matches) > 2 {
+				modulePath = matches[2]
+			}
 
 			// Process local files (relative, absolute from base, or subdirectory)
-			if b.isLocalModule(modulePath) {
+			if modulePath != "" && b.isLocalModule(modulePath) {
 				resolvedPath := b.resolveModulePath(filePath, modulePath)
 
 				// Skip if already processed

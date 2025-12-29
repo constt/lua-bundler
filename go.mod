@@ -1,4 +1,4 @@
-module github.com/alfin-efendy/lua-bundler
+module github.com/constt/lua-bundler
 
 go 1.24.0
 

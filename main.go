@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/alfin-efendy/lua-bundler/cmd"
+	"github.com/constt/lua-bundler/cmd"
 )
 
 // Version information (injected during build)

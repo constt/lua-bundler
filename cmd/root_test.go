@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/alfin-efendy/lua-bundler/internal/bundler"
+	"github.com/constt/lua-bundler/internal/bundler"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
