@@ -16,6 +16,18 @@ func (b *Bundler) generateBundle(mainContent string) string {
 	// Generate EmbeddedModules table
 	output.WriteString("local EmbeddedModules = {}\n\n")
 
+	// Add loadModule function
+	output.WriteString("-- Load module helper function\n")
+	output.WriteString("local function loadModule(url)\n")
+	output.WriteString("    -- Try embedded module first\n")
+	output.WriteString("    if EmbeddedModules[url] then\n")
+	output.WriteString("        return EmbeddedModules[url]()\n")
+	output.WriteString("    end\n")
+	output.WriteString("    \n")
+	output.WriteString("    -- Fallback to original require\n")
+	output.WriteString("    return require(url)\n")
+	output.WriteString("end\n\n")
+
 	// Add all modules
 	for path, content := range b.modules {
 		output.WriteString(fmt.Sprintf("-- Module: %s\n", path))
@@ -36,18 +48,6 @@ func (b *Bundler) generateBundle(mainContent string) string {
 
 		output.WriteString("end\n\n")
 	}
-
-	// Add loadModule function
-	output.WriteString("-- Load module helper function\n")
-	output.WriteString("local function loadModule(url)\n")
-	output.WriteString("    -- Try embedded module first\n")
-	output.WriteString("    if EmbeddedModules[url] then\n")
-	output.WriteString("        return EmbeddedModules[url]()\n")
-	output.WriteString("    end\n")
-	output.WriteString("    \n")
-	output.WriteString("    -- Fallback to original require\n")
-	output.WriteString("    return require(url)\n")
-	output.WriteString("end\n\n")
 
 	// Replace require() and loadstring() in main content
 	processedMain := b.replaceModuleCalls(mainContent)

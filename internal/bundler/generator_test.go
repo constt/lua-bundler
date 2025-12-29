@@ -245,7 +245,7 @@ print(config.locations.spots[1])`
 	assert.Contains(t, result, `loadModule("modules.fishing_methods")`, "should replace nested require in module with loadModule")
 	assert.NotContains(t, result, `require("modules.locations")`, "should not contain original require call in module")
 	assert.NotContains(t, result, `require("modules.fishing_methods")`, "should not contain original require call in module")
-	
+
 	// Verify the module content is properly embedded
 	assert.Contains(t, result, `EmbeddedModules["modules.config"]`, "should contain config module")
 	assert.Contains(t, result, `EmbeddedModules["modules.locations"]`, "should contain locations module")
@@ -276,7 +276,7 @@ return methods`
 	// Verify that nested require in modules.locations is replaced
 	assert.Contains(t, result, `loadModule("modules.fishing_methods")`, "should replace nested require in modules.locations with loadModule")
 	assert.NotContains(t, result, `require("modules.fishing_methods")`, "should not contain original require call in modules.locations")
-	
+
 	// Print the result for debugging
 	t.Logf("Generated bundle:\n%s", result)
 }
@@ -310,7 +310,7 @@ return methods`
 	lines := strings.Split(result, "\n")
 	inConfigModule := false
 	configModuleLines := []string{}
-	
+
 	for _, line := range lines {
 		if strings.Contains(line, `EmbeddedModules["modules.config"]`) {
 			inConfigModule = true
@@ -322,7 +322,7 @@ return methods`
 			}
 		}
 	}
-	
+
 	configModuleContent := strings.Join(configModuleLines, "\n")
 	t.Logf("modules.config module content:\n%s", configModuleContent)
 
