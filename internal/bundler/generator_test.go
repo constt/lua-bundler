@@ -251,3 +251,84 @@ print(config.locations.spots[1])`
 	assert.Contains(t, result, `EmbeddedModules["modules.locations"]`, "should contain locations module")
 	assert.Contains(t, result, `EmbeddedModules["modules.fishing_methods"]`, "should contain fishing_methods module")
 }
+
+func TestGenerateBundle_NestedRequiresInLocations(t *testing.T) {
+	b, err := NewBundler("test.lua", false, false)
+	require.NoError(t, err, "NewBundler should not fail")
+
+	// Test the exact scenario from the user: modules.locations requiring modules.fishing_methods
+	b.modules["modules.locations"] = `-- modules/locations.lua
+-- Fishing location definitions
+
+local fishing_methods = require("modules.fishing_methods")
+
+local locations = {}
+return locations`
+
+	b.modules["modules.fishing_methods"] = `local methods = {}
+methods.types = {"rod", "net"}
+return methods`
+
+	mainContent := `local locations = require("modules.locations")`
+
+	result := b.generateBundle(mainContent)
+
+	// Verify that nested require in modules.locations is replaced
+	assert.Contains(t, result, `loadModule("modules.fishing_methods")`, "should replace nested require in modules.locations with loadModule")
+	assert.NotContains(t, result, `require("modules.fishing_methods")`, "should not contain original require call in modules.locations")
+	
+	// Print the result for debugging
+	t.Logf("Generated bundle:\n%s", result)
+}
+
+func TestGenerateBundle_ExactUserScenario(t *testing.T) {
+	b, err := NewBundler("test.lua", false, false)
+	require.NoError(t, err, "NewBundler should not fail")
+
+	// Exact scenario from user: modules.config requiring modules.locations and modules.fishing_methods
+	b.modules["modules.config"] = `local config = {}
+local locations = require("modules.locations")
+local fishing_methods = require("modules.fishing_methods")
+
+return config`
+
+	b.modules["modules.locations"] = `local locations = {}
+return locations`
+
+	b.modules["modules.fishing_methods"] = `local methods = {}
+return methods`
+
+	mainContent := `local config = require("modules.config")`
+
+	result := b.generateBundle(mainContent)
+
+	// Print full result for debugging
+	t.Logf("Full generated bundle:\n%s", result)
+
+	// Check that modules.config has loadModule calls, not require calls
+	// Find the modules.config section
+	lines := strings.Split(result, "\n")
+	inConfigModule := false
+	configModuleLines := []string{}
+	
+	for _, line := range lines {
+		if strings.Contains(line, `EmbeddedModules["modules.config"]`) {
+			inConfigModule = true
+		}
+		if inConfigModule {
+			configModuleLines = append(configModuleLines, line)
+			if strings.TrimSpace(line) == "end" && len(configModuleLines) > 1 {
+				break
+			}
+		}
+	}
+	
+	configModuleContent := strings.Join(configModuleLines, "\n")
+	t.Logf("modules.config module content:\n%s", configModuleContent)
+
+	// Verify nested requires are replaced
+	assert.Contains(t, result, `loadModule("modules.locations")`, "should replace require in modules.config with loadModule")
+	assert.Contains(t, result, `loadModule("modules.fishing_methods")`, "should replace require in modules.config with loadModule")
+	assert.NotContains(t, configModuleContent, `require("modules.locations")`, "should not contain require in modules.config")
+	assert.NotContains(t, configModuleContent, `require("modules.fishing_methods")`, "should not contain require in modules.config")
+}
