@@ -87,7 +87,7 @@ func (b *Bundler) replaceModuleCalls(content string) string {
 	}
 	processedContent = strings.Join(lines, "\n")
 
-	// Replace require() for local files
+	// Replace require() for bundled modules (check b.modules first, then isLocalModule)
 	processedContent = requireRegex.ReplaceAllStringFunc(processedContent, func(match string) string {
 		matches := requireRegex.FindStringSubmatch(match)
 		if len(matches) > 1 {
@@ -96,8 +96,15 @@ func (b *Bundler) replaceModuleCalls(content string) string {
 			if modulePath == "" && len(matches) > 2 {
 				modulePath = matches[2]
 			}
-			if modulePath != "" && b.isLocalModule(modulePath) {
-				return fmt.Sprintf("loadModule(\"%s\")", escapeString(modulePath))
+			if modulePath != "" {
+				// If module is in b.modules (already bundled), replace with loadModule
+				if _, exists := b.modules[modulePath]; exists {
+					return fmt.Sprintf("loadModule(\"%s\")", escapeString(modulePath))
+				}
+				// Otherwise, check if it's a local module
+				if b.isLocalModule(modulePath) {
+					return fmt.Sprintf("loadModule(\"%s\")", escapeString(modulePath))
+				}
 			}
 		}
 		return match
